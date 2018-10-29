@@ -12,10 +12,38 @@
 	 */
 
     public static function init() {
-        add_action( 'admin_init', array( __CLASS__, 'admin_hooks' ) );
-        add_action( 'network_admin_menu', array( __CLASS__, 'woo_to_printavo_menu' ) );
+		add_action( 'network_admin_menu', array( __CLASS__, 'woo_to_printavo_menu' ) );
 		add_action( 'network_admin_menu', array( __CLASS__, 'woo_to_printavo_settings_subpage' ) );
-    }
+        add_action( 'admin_init', array( __CLASS__, 'admin_hooks' ) );
+		// Special and neccesary action to process the saving of the options
+		add_action( 'network_admin_edit_woo_to_printavo_update_network_options', array( __CLASS__, 'woo_to_printavo_update_network_options' ) );
+	}
+	
+	/**
+	 * Admin Top Level Menu
+	 */
+	public static function woo_to_printavo_menu() {
+		add_menu_page(
+			__( 'Printavo to WooCommerce Import Settings' , 'woo_to_printavo' ),
+			__( 'Printavo' , 'woo_to_printavo' ),
+			'manage_network_options',
+			'woo_to_printavo'
+		);
+	}
+
+	/**
+	 * Settings Subpage
+	 */
+	public static function woo_to_printavo_settings_subpage() {
+		add_submenu_page(
+			'woo_to_printavo',
+			__( 'Printavo to WooCommerce Import Settings' , 'woo_to_printavo' ),
+			__( 'Importer Settings' , 'woo_to_printavo' ),
+			'manage_network_options',
+			'woo_to_printavo',
+			array( __CLASS__, 'woo_to_printavo_options_page_html' )
+		);
+	}
 
 	public static function admin_hooks() {
 
@@ -45,49 +73,32 @@
 		add_settings_field(
 			'woo_to_printavo_field_client_email',
 			__( 'Client email', 'woo_to_printavo' ),
-			array( __CLASS__, 'woo_to_printavo_field_text_cb' ),
+			array( __CLASS__, 'woo_to_printavo_field_input' ), // The function to render
 			'woo_to_printavo',
 			'woo_to_printavo_api_section',
 			array(
                 'label_for' => 'woo_to_printavo_field_client_email', 
-                'class'     => 'woo_to_printavo_row'
+				'class'     => 'woo_to_printavo_row',
+				'required'	=> true,
+				'type'		=> 'email'
             )
 		);
 
         // Client Password
 		add_settings_field(
-			'woo_to_printavo_field_user_password',
+			'woo_to_printavo_field_client_password',
 			__( 'Password', 'woo_to_printavo' ),
-			array( __CLASS__, 'woo_to_printavo_field_password_cb' ),
+			array( __CLASS__, 'woo_to_printavo_field_input' ),
             'woo_to_printavo',
             'woo_to_printavo_api_section',
 			array(
-                'label_for' => 'woo_to_printavo_field_user_password',
-                'class'     => 'woo_to_printavo_row'
+                'label_for' => 'woo_to_printavo_field_client_password',
+				'class'     => 'woo_to_printavo_row',
+				'required'	=> true,
+				'type'		=> 'password'
             )
 		);
     }
-    
-    /**
-	 * Admin Top Level Menu
-	 */
-	public static function woo_to_printavo_menu() {
-		add_menu_page( __( 'Printavo to WooCommerce Import Settings' , 'woo_to_printavo' ), __( 'Printavo' , 'woo_to_printavo' ), 'administrator', 'woo_to_printavo' );
-	}
-
-	/**
-	 * Settings Subpage
-	 */
-	public static function woo_to_printavo_settings_subpage() {
-		add_submenu_page(
-			'woo_to_printavo',
-			__( 'Printavo to WooCommerce Import Settings' , 'woo_to_printavo' ),
-			__( 'Importer Settings' , 'woo_to_printavo' ),
-			'administrator',
-			'woo_to_printavo',
-			array( __CLASS__, 'woo_to_printavo_options_page_html' )
-		);
-	}
 
 	/**
 	 * Callback to render section
@@ -104,32 +115,16 @@
 	/**
 	 * Instance Text fields Callback
 	 */
-	public static function woo_to_printavo_field_text_cb( $args ) {
-		$options = get_option( 'woo_to_printavo_options' );
+	public static function woo_to_printavo_field_input( $args ) {
+		$options = get_site_option( 'woo_to_printavo_options' );
 		?>
 
-		<input type="text"
-		       id="<?php echo esc_attr( $args['label_for'] ); ?>"
-               required
+		<input id="<?php echo esc_attr( $args['label_for'] ); ?>"
 		       class="regular-text"
+			   type="<?php echo $args['type'] ? esc_attr( $args['type'] ) : 'text' ?>"
 		       name="woo_to_printavo_options[<?php echo esc_attr( $args['label_for'] ); ?>]"
+               <?php echo $args['required'] ? esc_attr( 'required' ) : '' ?>
 			<?php echo ( isset( $options[ $args['label_for'] ] ) ? 'value=' . $options[ $args['label_for'] ] : ( '' ) ) ?>
-		>
-		<?php
-	}
-
-	/**
-	 * Instance Password fields Callback
-	 */
-	public static function woo_to_printavo_field_password_cb( $args ) {
-		$options = get_option( 'woo_to_printavo_options' );
-		?>
-
-		<input type="password"
-		       id="<?php echo esc_attr( $args['label_for'] ); ?>"
-		       class="regular-text"
-		       name="woo_to_printavo_options[<?php echo esc_attr( $args['label_for'] ); ?>]"
-               <?php echo ( isset( $options[ $args['label_for'] ] ) ? 'value=' . $options[ $args['label_for'] ] : ( '' ) ) ?>
 		>
 		<?php
 	}
@@ -140,11 +135,11 @@
 	 */
 	public static function woo_to_printavo_options_page_html() {
 		// check user capabilities
-		if ( ! current_user_can( 'administrator' ) ) {
+		if ( ! current_user_can( 'manage_network_options' ) ) {
 			return;
 		}
 
-		if ( isset( $_GET['settings-updated'] ) ) {
+		if ( isset( $_GET['updated'] ) ) {
 			// add settings saved message with the class of "updated"
 			add_settings_error(
                 'woo_to_printavo_messages',
@@ -159,23 +154,47 @@
                 __( 'Error: we were unable to connect to Printavo', 'woo_to_printavo'),
                 'error'
             );
-        }
+		}
 
 		// show error/update messages
 		settings_errors( 'woo_to_printavo_messages' );
 		?>
 		<div class="wrap">
             <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-            <form action="options.php" method="post">
+            <form action="edit.php?action=woo_to_printavo_update_network_options" method="post">
                 <?php
-                // output security fields for the registered setting "woo_to_printavo"
-                settings_fields( 'woo_to_printavo' );
+				// output security fields for the registered setting "woo_to_printavo"
+				settings_fields( 'woo_to_printavo' );
+
                 do_settings_sections( 'woo_to_printavo' );
                 submit_button( 'Save settings' );
                 ?>
             </form>
 		</div>
 		<?php
+	}
+
+	public static function woo_to_printavo_update_network_options() {
+		// we must add the '-options' postfix when we check the referer.
+		check_admin_referer('woo_to_printavo-options');
+
+		$options = 'woo_to_printavo_options';
+		if ( isset( $_POST[$options] ) ) {
+			update_site_option( $options, $_POST[$options] );
+		} else {
+			delete_site_option( $options );
+		}
+
+		// Redirect back to our options page.
+		wp_redirect(
+			add_query_arg(
+				array(
+					'page' 		=> 'woo_to_printavo',
+					'updated' 	=> 'true'
+			),
+			network_admin_url( 'admin.php' ))
+		);
+		exit;
 	}
 
 }
