@@ -5,13 +5,17 @@
  * mainly render functions
  */
 
- class WooToPrintavoAdmin {
+class WooToPrintavoAdmin {
+
+	public static function loader() {
+        require_once plugin_dir_path( __FILE__ ) . 'class-printavo-api.php';
+    }
 
 	/**
 	 * Plugin options and settings
 	 */
-
     public static function init() {
+		self::loader();
 		add_action( 'network_admin_menu', array( __CLASS__, 'woo_to_printavo_menu' ) );
 		add_action( 'network_admin_menu', array( __CLASS__, 'woo_to_printavo_settings_subpage' ) );
         add_action( 'admin_init', array( __CLASS__, 'admin_hooks' ) );
@@ -140,20 +144,31 @@
 		}
 
 		if ( isset( $_GET['updated'] ) ) {
-			// add settings saved message with the class of "updated"
-			add_settings_error(
-                'woo_to_printavo_messages',
-                'woo_to_printavo_message',
-                __( 'Settings Saved, Success connection to Printavo', 'woo_to_printavo' ),
-                'updated'
-            );
-		} else {
-			add_settings_error(
-			    'woo_to_printavo_messages',
-                'woo_to_printavo_message',
-                __( 'Error: we were unable to connect to Printavo', 'woo_to_printavo'),
-                'error'
-            );
+			$options = get_site_option( 'woo_to_printavo_options' );
+			
+			$email = $options['woo_to_printavo_field_client_email'];
+			$password = $options['woo_to_printavo_field_client_password'];
+
+			$api = new PrintavoAPI( $email, $password );
+			$session_token = $api->get_access_token();
+			
+			if ( ! is_wp_error( $session_token ) ) {
+				// add settings saved message with the class of "updated"
+				add_settings_error(
+					'woo_to_printavo_messages',
+					'woo_to_printavo_message',
+					__( 'Settings Saved, Success connection to Printavo', 'woo_to_printavo' ),
+					'updated'
+				);
+			} else {
+				$message = $session_token->get_error_message();
+				add_settings_error(
+					'woo_to_printavo_messages',
+					'woo_to_printavo_message',
+					__( "Error: we were unable to connect to Printavo, {$message}", 'woo_to_printavo'),
+					'error'
+				);
+			}
 		}
 
 		// show error/update messages
