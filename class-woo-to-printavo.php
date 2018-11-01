@@ -15,6 +15,7 @@ class WooToPrintavo {
 
     public static function loader() {
         require_once plugin_dir_path( __FILE__ ) . 'lib/class-woo-to-printavo-admin.php';
+        require_once plugin_dir_path( __FILE__ ) . 'lib/class-woo-to-printavo-hooks.php';
     }
 
     public static function init() {
@@ -26,6 +27,8 @@ class WooToPrintavo {
 
         // Init admin options
         WooToPrintavoAdmin::init();
+        // Init hooks
+        WooToPrintavoHooks::init();
 
     }
 

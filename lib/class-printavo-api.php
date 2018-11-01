@@ -72,6 +72,10 @@ class PrintavoAPI {
             return $error;
         }
     }
+
+    public function post_create_order( $woo_order_id ) {
+        return true;
+    }
     
     public function is_connected() {
         return $this->connected;

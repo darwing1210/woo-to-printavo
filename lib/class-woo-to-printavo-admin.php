@@ -139,6 +139,9 @@ class WooToPrintavoAdmin {
 	 */
 	public static function woo_to_printavo_options_page_html() {
 		// check user capabilities
+		// @TODO add option to select if user want to 
+		// send orders to printavo when order is placed automatically
+
 		if ( ! current_user_can( 'manage_network_options' ) ) {
 			return;
 		}
