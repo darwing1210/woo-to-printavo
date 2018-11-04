@@ -33,6 +33,14 @@ class WooToPrintavoHooks {
 		return $actions;
 	}
 
+	public static function woo_to_printavo_error_notice() {
+		?>
+			<div class="error notice">
+				<p><?php _e( 'There was an error with this request', 'woo_to_printavo' ); ?></p>
+			</div>
+		<?php
+	}
+
 	/**
 	 * Add an order note when custom action is clicked
 	 * Add a flag on the order to show it's been run
@@ -49,13 +57,30 @@ class WooToPrintavoHooks {
 		$api = new PrintavoAPI( $email, $password );
 		$result = $api->post_create_order( $order );
 
-		// add a order note
-		// translators: Placeholders: %s is a user's display name
-		$current_time = current_time( 'mysql' ); 
-		$message = sprintf( __( 'Order sent to printavo on %s.', 'woo_to_printavo' ),  $current_time);
+		if ( is_wp_error( $result ) ) {
+			add_action( 'admin_notices', array( __class__, 'woo_to_printavo_error_notice' ) );
+			$message = sprintf(
+				__( 'There was an error sending order to printavo, %s: %s', 'woo_to_printavo' ),
+				$result->get_error_code(),
+				$result->get_error_message()
+			);
+			$order->add_order_note( $message );
+			return;
+		}
+
+		$printavo_id = $result['id'];
+		$visual_id = $result['visual_id'];
+		$url = $result['url'];
+
+		// Add a order note
+		$message = sprintf( __( 'Order sent to printavo, Visual Id: %s, URL: %s', 'woo_to_printavo' ),  $visual_id, $url);
+		
 		$order->add_order_note( $message );
 		
-		// add the flag
+		// Add the flag
 		update_post_meta( $order->get_id(), '_wc_order_sent_to_printavo_date', $current_time );
+		update_post_meta( $order->get_id(), '_wc_order_printavo_id', $printavo_id );
+		update_post_meta( $order->get_id(), '_wc_order_printavo_visual_id', $visual_id );
+		update_post_meta( $order->get_id(), '_wc_order_printavo_url', $url );
 	}
 }
