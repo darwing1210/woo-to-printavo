@@ -187,6 +187,9 @@ class PrintavoAPI {
 
     public static function parse_order_items( $order ) {
         $items = array();
+        $valid_sizes = array( 'yxs', 'ys', 'ym', 'yl', 'yxl', 'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', 'other' );
+        $size_key = 'other'; // Default key
+
         foreach( $order->get_items() as $item_id => $item ) {
             $unit_cost = $item->get_subtotal();
             $quantity = $item->get_quantity();
@@ -196,8 +199,16 @@ class PrintavoAPI {
             
             // Product may not exist, we initialize parameters
             $sku = '';
+            $color = '';
             if ( $product ) {
                 $sku = $product->get_sku();
+                $color = $product->get_attribute( 'color' );
+                
+                // This maps sizes
+                // $size = $product->get_attribute( 'size' );
+                // if ( $size && in_array( strtolower( $size ), $valid_sizes ) ) {
+                //     $size_key = strtolower( $size );
+                // }
             }
 
             $items[] = array(
@@ -205,24 +216,10 @@ class PrintavoAPI {
                 'style_description'     => $product_name,
                 'category_id'           => 45390, // Embroidery, fixed by now @TODO map product categories with printavo categories
                 'unit_cost'             => $unit_cost,
-                'size_other'            => $quantity, // Quantity
+                'color'                 => $color,
+                "size_{$size_key}"      => $quantity, // Quantity
                 'taxable'               => True,
             );
-
-            // @TODO Get Product variation description
-            // Only for product variation
-            // if ( $product->is_type('variation') ) {
-            //     // Get the variation attributes
-            //     $variation_attributes = $product->get_variation_attributes();
-            //     // Loop through each selected attributes
-            //     foreach( $variation_attributes as $attribute_taxonomy => $term_slug ) {
-            //         $taxonomy = str_replace('attribute_', '', $attribute_taxonomy );
-            //         // The name of the attribute
-            //         $attribute_name = get_taxonomy( $taxonomy )->labels->singular_name;
-            //         // The term name (or value) for this attribute
-            //         $attribute_value = get_term_by( 'slug', $term_slug, $taxonomy )->name;
-            //     }
-            // }
         }
         return $items;
     }
