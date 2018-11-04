@@ -56,6 +56,7 @@ class WooToPrintavoHooks {
 		
 		$api = new PrintavoAPI( $email, $password );
 		$result = $api->post_create_order( $order );
+		$api->logout();
 
 		if ( is_wp_error( $result ) ) {
 			add_action( 'admin_notices', array( __class__, 'woo_to_printavo_error_notice' ) );

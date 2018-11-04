@@ -54,7 +54,7 @@ class PrintavoAPI {
         return $error;
     }
 
-    public function parse_request( $method, $endpoint, $require_token = false, $queries = array(), $body = array() ) {
+    public function parse_request( $method, $endpoint, $require_token = false, $queries = array(), $body = array(), $extra_args = array() ) {
         
         if ( $require_token ) {
             $session_token = $this->get_session_token();
@@ -70,7 +70,7 @@ class PrintavoAPI {
         $endpoint_url = add_query_arg( $queries, $endpoint );
 
         // Request args
-        $args = array( 'headers'   => array( 'Content-Type' => 'application/json; charset=utf-8' ) ); 
+        $args = array_merge( array( 'headers'   => array( 'Content-Type' => 'application/json; charset=utf-8' ) ), $extra_args );
         if ( ! empty( $body ) ) {
             $args = array_merge( $args, array( 'body' => json_encode( $body) ) );
         }
@@ -108,6 +108,15 @@ class PrintavoAPI {
         }
     }
 
+    public function logout() {
+        $endpoint_url = "{$this->api_url}{$this->api_version}/sessions";;
+        $extra_args = array( 'method' => 'DELETE' );
+
+        $response = $this->parse_request( 'wp_remote_request', $endpoint_url, true, array(), array(), $extra_args );
+
+        return $response;
+    }
+
     public function get_printavo_customer_id( $email ) {
         
         $endpoint_url = "{$this->api_url}{$this->api_version}/customers/search";   
@@ -136,11 +145,9 @@ class PrintavoAPI {
 
     }
 
-    public function post_create_customer( $order ) {
-        $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
-
-
-    }
+    // public function post_create_customer( $order ) {
+    //     $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
+    // }
 
     public function post_create_order( $order ) {
 
@@ -175,7 +182,7 @@ class PrintavoAPI {
             'order_nickname'                => $order_nickname,
             'notes'                         => $order->get_customer_note(),
             'sales_tax'                     => (string) $sales_tax,
-            'discount'                      => (string) $order->get_total_discount(),
+            'discount'                      => (string) $order->get_discount_total(),
             'production_notes'              => "WooCommerce Order id: {$order->get_id()}, Edit: {$order->get_edit_order_url()}",
             'lineitems_attributes'          => $line_items
         );
@@ -202,8 +209,8 @@ class PrintavoAPI {
         $size_key = 'other'; // Default key
 
         foreach( $order->get_items() as $item_id => $item ) {
-            $unit_cost = $item->get_subtotal();
             $quantity = $item->get_quantity();
+            $unit_cost = $item->get_subtotal() / $quantity;
             $product_name = $item->get_name();
 
             $product = $item->get_product();
