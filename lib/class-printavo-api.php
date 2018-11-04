@@ -142,11 +142,16 @@ class PrintavoAPI {
         
         $completed_date = $order->get_date_created();
         
-        $order_nickname = get_bloginfo('name'); // @TODO add coupon code
+        // By Requirement Nickname is the COUPON_CODES + Blog Name
+        $order_nickname = get_bloginfo('name'); // By Default just the Blog name
+        $coupons = implode( ', ' , $order->get_used_coupons() );
+        if ( !empty( $coupons ) ) {
+            $order_nickname = implode( " - ", array( $coupons, $order_nickname ) );
+        }
         
         $line_items = self::parse_order_items( $order );
         // Printavo uses porcentage for tax
-        $sales_tax = ( $order->get_cart_tax() / $order->get_subtotal() ) * 100;
+        $sales_tax = ( $order->get_cart_tax() / ( $order->get_subtotal() - $order->get_discount_total() ) ) * 100;
         
         // Attemp to Get Customer ID
         $customer_id = $this->get_printavo_customer_id( $order->get_billing_email() );
