@@ -153,7 +153,7 @@ class WooToPrintavoAdmin {
 			$password = $options['woo_to_printavo_field_client_password'];
 
 			$api = new PrintavoAPI( $email, $password );
-			$session_token = $api->get_access_token();
+			$session_token = $api->get_session_token();
 			
 			if ( ! is_wp_error( $session_token ) ) {
 				// add settings saved message with the class of "updated"

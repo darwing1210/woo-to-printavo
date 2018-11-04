@@ -39,8 +39,16 @@ class WooToPrintavoHooks {
 	 *
 	 * @param \WC_Order $order
 	 */
-	function woo_to_printavo_process_send_order_meta_box_action( $order ) {
+	public static function woo_to_printavo_process_send_order_meta_box_action( $order ) {
 		
+		// Init Printavo API
+		$options = get_site_option( 'woo_to_printavo_options' );
+		$email = $options['woo_to_printavo_field_client_email'];
+		$password = $options['woo_to_printavo_field_client_password'];
+		
+		$api = new PrintavoAPI( $email, $password );
+		$result = $api->post_create_order( $order );
+
 		// add a order note
 		// translators: Placeholders: %s is a user's display name
 		$current_time = current_time( 'mysql' ); 
