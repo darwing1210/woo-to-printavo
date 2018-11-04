@@ -136,6 +136,12 @@ class PrintavoAPI {
 
     }
 
+    public function post_create_customer( $order ) {
+        $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
+
+
+    }
+
     public function post_create_order( $order ) {
 
         $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
@@ -161,7 +167,7 @@ class PrintavoAPI {
 
         $body = array(
             'user_id'                       => $this->get_printavo_user_id(), // Required
-            'customer_id'                   => $customer_id, // Required
+            'customer_id'                   => $customer_id ? $customer_id : 1826262, // Required @TODO implement create customer
             'orderstatus_id'                => 80818, // Required @TODO set default status in settings
             'custom_created_at'             => (string) $completed_date,
             'formatted_due_date'            => $completed_date->date_i18n('m/d/Y'), // Required, format 11/11/2014
