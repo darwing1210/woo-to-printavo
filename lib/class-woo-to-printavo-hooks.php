@@ -118,16 +118,51 @@ class WooToPrintavoHooks {
         }
     }
 
+    public static function woo_to_printavo_get_printavo_categories() {
+
+        $categories = get_transient( 'printavo_categories' );
+        if ( $categories ) {
+            return $categories;
+        }
+
+        $options = get_site_option( 'woo_to_printavo_options' );
+        $email = $options['woo_to_printavo_field_client_email'];
+        $password = $options['woo_to_printavo_field_client_password'];
+        
+        $api = new PrintavoAPI( $email, $password );
+        $categories = $api->get_printavo_product_categories();
+        $api->logout();
+        
+        if ( is_wp_error( $categories ) ) {
+            delete_transient( 'printavo_categories' );
+            return $categories;    
+        }
+
+        set_transient( 'printavo_categories', $categories, 60*60*1 );
+        return $categories;
+
+    }
+
 
     //Product Cat Create page
     public static function woo_to_printavo_add_category_meta_field() {
+        $categories = self::woo_to_printavo_get_printavo_categories();
+        if ( $categories ) {
         ?>
         <div class="form-field">
             <label for="woo_to_printavo_category"><?php _e('Printavo Category', 'woo_to_printavo'); ?></label>
-            <input type="text" name="woo_to_printavo_category" id="woo_to_printavo_category">
+            <select id="woo_to_printavo_category" class="regular-text" name="woo_to_printavo_category">
+                <option value="">Select an option</option>
+                <?php foreach( $categories as $category ) { ?>
+                    <option value="<?php echo esc_attr( $category['id'] ) ?>" >
+                            <?php echo esc_attr( $category['name'] ) ?>
+                    </option>
+                <?php } ?>
+            </select>
             <p class="description"><?php _e('Select Printavo Category', 'woo_to_printavo'); ?></p>
         </div>
         <?php
+        }
     }
 
     //Product Cat Edit page
@@ -135,18 +170,28 @@ class WooToPrintavoHooks {
 
         //getting term ID
         $term_id = $term->term_id;
-
+        $categories = self::woo_to_printavo_get_printavo_categories();
         // retrieve the existing value(s) for this meta field.
         $printavo_category_id = get_term_meta( $term_id, 'woo_to_printavo_category', true );
+        if ( $categories ) {
         ?>
         <tr class="form-field">
             <th scope="row" valign="top"><label for="woo_to_printavo_category"><?php _e( 'Printavo Category', 'woo_to_printavo' ); ?></label></th>
             <td>
-                <input type="text" name="woo_to_printavo_category" id="woo_to_printavo_category" value="<?php echo esc_attr( $printavo_category_id ) ? esc_attr( $printavo_category_id ) : ''; ?>">
+                <select id="woo_to_printavo_category" class="regular-text" name="woo_to_printavo_category" value="<?php echo esc_attr( $printavo_category_id ) ? esc_attr( $printavo_category_id ) : '' ?>">
+                    <option value="">Select an option</option>
+                    <?php foreach( $categories as $category ) { ?>
+                        <option value="<?php echo esc_attr( $category['id'] ) ?>"
+                            <?php echo esc_attr( $printavo_category_id == $category['id'] ? "selected" : '') ?> >
+                                <?php echo esc_attr( $category['name'] ) ?>
+                        </option>
+                    <?php } ?>
+                </select>
                 <p class="description"><?php _e('Select Printavo Category', 'woo_to_printavo'); ?></p>
             </td>
         </tr>
         <?php
+        }
     }
     
     // Save extra taxonomy fields callback function.

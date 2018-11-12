@@ -256,6 +256,7 @@ class WooToPrintavoAdmin {
                     update_site_option( 'woo_to_printavo_statuses', $statuses );
                 } else {
                     delete_site_option( 'woo_to_printavo_statuses' );
+                    delete_transient( 'printavo_categories' );
                 }
 
             } else {
@@ -267,6 +268,7 @@ class WooToPrintavoAdmin {
                     'error'
                 );
                 delete_site_option( 'woo_to_printavo_statuses' );
+                delete_transient( 'printavo_categories' );
             }
         }
 
@@ -295,9 +297,11 @@ class WooToPrintavoAdmin {
         $options = 'woo_to_printavo_options';
         if ( isset( $_POST[$options] ) ) {
             update_site_option( $options, $_POST[$options] );
+            delete_transient( 'printavo_categories' );
         } else {
             delete_site_option( $options );
             delete_site_option( 'woo_to_printavo_statuses' );
+            delete_transient( 'printavo_categories' );
         }
 
         // Redirect back to our options page.
