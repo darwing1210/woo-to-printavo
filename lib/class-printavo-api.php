@@ -262,7 +262,7 @@ class PrintavoAPI {
         $endpoint_url = "{$this->api_url}{$this->api_version}/orderstatuses";
 
         $queries = array(
-            'per_page'  => '100'
+            'per_page'  => '100' // @TODO handle pagination
         );
 
         $response = $this->parse_request( 'wp_remote_get', $endpoint_url, true, $queries );
@@ -280,7 +280,33 @@ class PrintavoAPI {
             }
             return null;
         } else {
-            return $this->handle_request_error( 'customer_id', $api_response, $response_code );
+            return $this->handle_request_error( 'order_statuses', $api_response, $response_code );
+        }
+    }
+
+    public function get_printavo_product_categories() {
+        $endpoint_url = "{$this->api_url}{$this->api_version}/categories";
+
+        $queries = array(
+            'per_page'  => '100' // @TODO handle pagination
+        );
+
+        $response = $this->parse_request( 'wp_remote_get', $endpoint_url, true, $queries );
+        
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $api_response = json_decode( wp_remote_retrieve_body( $response ), true );
+        $response_code = wp_remote_retrieve_response_code( $response );
+
+        if ( $response_code === 200 ) {
+            if ( isset( $api_response['data'] ) && !empty( $api_response['data'] ) ) {
+                return $api_response['data'];
+            }
+            return null;
+        } else {
+            return $this->handle_request_error( 'product_categories', $api_response, $response_code );
         }
     }
 
@@ -299,10 +325,12 @@ class PrintavoAPI {
             // Product may not exist, we initialize parameters
             $sku = '';
             $color = '';
+            $terms = array();
+            $printavo_category = null;  // @TODO set default category on settings
             if ( $product ) {
                 $sku = $product->get_sku();
                 $color = $product->get_attribute( 'color' );
-                
+                $terms = wp_get_post_terms( $item->get_product_id(), 'product_cat', array( 'fields' => 'ids' ) );
                 // This maps sizes
                 // $size = $product->get_attribute( 'size' );
                 // if ( $size && in_array( strtolower( $size ), $valid_sizes ) ) {
@@ -310,10 +338,19 @@ class PrintavoAPI {
                 // }
             }
 
+            // Setting a category
+            foreach ($terms as $term_id) {
+                $cat = get_term_meta( $term_id, 'woo_to_printavo_category', true );
+                if ( $cat ) {
+                    $printavo_category = $cat;
+                    break;
+                }
+            }
+
             $items[] = array(
                 'style_number'          => $sku,
                 'style_description'     => $product_name,
-                'category_id'           => 45390, // Embroidery, fixed by now @TODO map product categories with printavo categories
+                'category_id'           => $printavo_category,
                 'unit_cost'             => $unit_cost,
                 'color'                 => $color,
                 "size_{$size_key}"      => $quantity, // Quantity

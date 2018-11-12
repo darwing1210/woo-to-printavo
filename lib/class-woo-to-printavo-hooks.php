@@ -19,6 +19,12 @@ class WooToPrintavoHooks {
         add_action( 'woocommerce_order_actions', array( __class__, 'woo_to_printavo_send_order_meta_box_action' ) );
         add_action( 'woocommerce_order_action_wc_custom_order_action', array( __class__, 'woo_to_printavo_process_send_order_meta_box_action' ) );
         add_action( 'woocommerce_thankyou', array( __class__, 'woo_to_printavo_after_checkout' ), 10, 1 );
+
+        // Category field
+        add_action( 'product_cat_add_form_fields', array( __class__, 'woo_to_printavo_add_category_meta_field' ), 10, 1 );
+        add_action( 'product_cat_edit_form_fields', array( __class__, 'woo_to_printavo_edit_category_meta_field' ), 10, 1 );
+        add_action( 'edited_product_cat', array( __class__, 'woo_to_printavo_save_category_custom_meta' ), 10, 1 );
+        add_action( 'create_product_cat', array( __class__, 'woo_to_printavo_save_category_custom_meta' ), 10, 1 );   
     }
     
     /**
@@ -111,4 +117,42 @@ class WooToPrintavoHooks {
             self::send_order_to_printavo( $order );
         }
     }
+
+
+    //Product Cat Create page
+    public static function woo_to_printavo_add_category_meta_field() {
+        ?>
+        <div class="form-field">
+            <label for="woo_to_printavo_category"><?php _e('Printavo Category', 'woo_to_printavo'); ?></label>
+            <input type="text" name="woo_to_printavo_category" id="woo_to_printavo_category">
+            <p class="description"><?php _e('Select Printavo Category', 'woo_to_printavo'); ?></p>
+        </div>
+        <?php
+    }
+
+    //Product Cat Edit page
+    public static function woo_to_printavo_edit_category_meta_field( $term ) {
+
+        //getting term ID
+        $term_id = $term->term_id;
+
+        // retrieve the existing value(s) for this meta field.
+        $printavo_category_id = get_term_meta( $term_id, 'woo_to_printavo_category', true );
+        ?>
+        <tr class="form-field">
+            <th scope="row" valign="top"><label for="woo_to_printavo_category"><?php _e( 'Printavo Category', 'woo_to_printavo' ); ?></label></th>
+            <td>
+                <input type="text" name="woo_to_printavo_category" id="woo_to_printavo_category" value="<?php echo esc_attr( $printavo_category_id ) ? esc_attr( $printavo_category_id ) : ''; ?>">
+                <p class="description"><?php _e('Select Printavo Category', 'woo_to_printavo'); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+    
+    // Save extra taxonomy fields callback function.
+    public static function woo_to_printavo_save_category_custom_meta( $term_id ) {
+        $printavo_category_id = filter_input( INPUT_POST, 'woo_to_printavo_category' );
+        update_term_meta( $term_id, 'woo_to_printavo_category', $printavo_category_id );
+    }
+
 }
