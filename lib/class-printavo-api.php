@@ -206,7 +206,8 @@ class PrintavoAPI {
 
         $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
         
-        $completed_date = $order->get_date_created();
+        $created_date = $order->get_date_created();
+        $due_date = clone $created_date->modify('+7 day');
         
         // By Requirement Nickname is t he COUPON_CODES + Blog Name
         $order_nickname = get_bloginfo('name' ); // By Default just the Blog name
@@ -229,9 +230,9 @@ class PrintavoAPI {
             'user_id'                       => $this->get_printavo_user_id(), // Required
             'customer_id'                   => $customer_id,
             'orderstatus_id'                => 80818, // Required @TODO set default status in settings
-            'custom_created_at'             => (string) $completed_date,
-            'formatted_due_date'            => $completed_date->date_i18n('m/d/Y'), // Required, format 11/11/2014
-            'formatted_customer_due_date'   => $completed_date->date_i18n('m/d/Y'),
+            'custom_created_at'             => (string) $created_date,
+            'formatted_due_date'            => $created_date->date_i18n('m/d/Y'), // Required, format 11/11/2014
+            'formatted_customer_due_date'   => $created_date->date_i18n('m/d/Y'),
             'order_nickname'                => $order_nickname,
             'notes'                         => $order->get_customer_note(),
             'sales_tax'                     => (string) $sales_tax,
