@@ -205,6 +205,7 @@ class PrintavoAPI {
     public function post_create_order( $order ) {
 
         $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
+        $options = get_site_option( 'woo_to_printavo_options' );
         
         $created_date = $order->get_date_created();
         $due_date = clone $created_date->modify('+7 day');
@@ -229,7 +230,7 @@ class PrintavoAPI {
         $body = array(
             'user_id'                       => $this->get_printavo_user_id(), // Required
             'customer_id'                   => $customer_id,
-            'orderstatus_id'                => 80818, // Required @TODO set default status in settings
+            'orderstatus_id'                => $options['woo_to_printavo_field_order_default_status'],
             'custom_created_at'             => (string) $created_date,
             'formatted_due_date'            => $created_date->date_i18n('m/d/Y'), // Required, format 11/11/2014
             'formatted_customer_due_date'   => $created_date->date_i18n('m/d/Y'),
@@ -254,6 +255,32 @@ class PrintavoAPI {
             return $api_response;
         } else {
             return $this->handle_request_error( 'create_order', $api_response, $response_code );
+        }
+    }
+
+    public function get_printavo_order_statuses() {
+        $endpoint_url = "{$this->api_url}{$this->api_version}/orderstatuses";
+
+        $queries = array(
+            'per_page'  => '100'
+        );
+
+        $response = $this->parse_request( 'wp_remote_get', $endpoint_url, true, $queries );
+        
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $api_response = json_decode( wp_remote_retrieve_body( $response ), true );
+        $response_code = wp_remote_retrieve_response_code( $response );
+
+        if ( $response_code === 200 ) {
+            if ( isset( $api_response['data'] ) && !empty( $api_response['data'] ) ) {
+                return $api_response['data'];
+            }
+            return null;
+        } else {
+            return $this->handle_request_error( 'customer_id', $api_response, $response_code );
         }
     }
 
