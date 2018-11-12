@@ -145,9 +145,62 @@ class PrintavoAPI {
 
     }
 
-    // public function post_create_customer( $order ) {
-    //     $endpoint_url = "{$this->api_url}{$this->api_version}/orders";
-    // }
+    public function post_create_printavo_customer( $order ) {
+        $endpoint_url = "{$this->api_url}{$this->api_version}/customers";
+        $blog_name = get_bloginfo('name' );
+        $body = array(
+            'first_name'    => $order->get_billing_first_name(),
+            'last_name'     => $order->get_billing_last_name(),
+            'company'       => $order->get_billing_company(),
+            'customer_email'=> $order->get_billing_email(),
+            'phone'         => $order->get_billing_phone(),
+            'shipping_address_attributes' => array(
+                'address1'  => $order->get_shipping_address_1(),
+                'address2'  => $order->get_shipping_address_2(),
+                'city'      => $order->get_shipping_city(),
+                'country'   => $order->get_shipping_country(),
+                'state'     => $order->get_shipping_state(),
+                'zip'       => $order->get_shipping_postcode()
+            ),
+            'billing_address_attributes' => array(
+                'address1'  => $order->get_billing_address_1(),
+                'address2'  => $order->get_billing_address_2(),
+                'city'      => $order->get_billing_city(),
+                'country'   => $order->get_billing_country(),
+                'state'     => $order->get_billing_state(),
+                'zip'       => $order->get_billing_postcode()
+            ),
+            'extra_notes'  => "Site: {$blog_name}"
+        );
+
+        $response = $this->parse_request( 'wp_remote_post', $endpoint_url, true, array(), $body );
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $api_response = json_decode( wp_remote_retrieve_body( $response ), true );
+        $response_code = wp_remote_retrieve_response_code( $response );
+
+        if ( $response_code === 201 ) {
+            return $api_response;
+        } else {
+            return $this->handle_request_error( 'create_customer', $api_response, $response_code );
+        }
+    }
+
+    public function get_or_create_printavo_customer( $order ) {
+        // Try to get
+        $customer_id =  $this->get_printavo_customer_id( $order->get_billing_email() );
+        if ( $customer_id || is_wp_error( $customer_id ) ) {
+            return $customer_id;
+        }
+        $created_customer = $this->post_create_printavo_customer( $order );
+        if ( is_wp_error( $created_customer ) ) {
+            return $created_customer;
+        }
+        return $created_customer['id'];
+    }
+
 
     public function post_create_order( $order ) {
 
@@ -155,8 +208,8 @@ class PrintavoAPI {
         
         $completed_date = $order->get_date_created();
         
-        // By Requirement Nickname is the COUPON_CODES + Blog Name
-        $order_nickname = get_bloginfo('name'); // By Default just the Blog name
+        // By Requirement Nickname is t he COUPON_CODES + Blog Name
+        $order_nickname = get_bloginfo('name' ); // By Default just the Blog name
         $coupons = implode( ', ' , $order->get_used_coupons() );
         if ( !empty( $coupons ) ) {
             $order_nickname = implode( " - ", array( $coupons, $order_nickname ) );
@@ -167,14 +220,14 @@ class PrintavoAPI {
         $sales_tax = ( $order->get_cart_tax() / ( $order->get_subtotal() - $order->get_discount_total() ) ) * 100;
         
         // Attemp to Get Customer ID
-        $customer_id = $this->get_printavo_customer_id( $order->get_billing_email() );
+        $customer_id = $this->get_or_create_printavo_customer( $order );
         if ( is_wp_error( $customer_id ) ) {
             return $customer_id;
         }
 
         $body = array(
             'user_id'                       => $this->get_printavo_user_id(), // Required
-            'customer_id'                   => $customer_id ? $customer_id : 1826262, // Required @TODO implement create customer
+            'customer_id'                   => $customer_id,
             'orderstatus_id'                => 80818, // Required @TODO set default status in settings
             'custom_created_at'             => (string) $completed_date,
             'formatted_due_date'            => $completed_date->date_i18n('m/d/Y'), // Required, format 11/11/2014
