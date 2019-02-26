@@ -181,10 +181,10 @@ class WooToPrintavoAdmin {
                class="regular-text"
                type="<?php echo $args['type'] ? esc_attr( $args['type'] ) : 'text' ?>"
                name="woo_to_printavo_options[<?php echo esc_attr( $args['label_for'] ); ?>]"
-               <?php echo $args['type'] == 'checkbox' && $stored_value == 'on' ? esc_attr( 'checked' ) : '' ?>
+               <?php $args['type'] == 'checkbox' ? checked( 'on', $stored_value) : '' ?>
                <?php echo $args['required'] ? esc_attr( 'required' ) : '' ?>
-            <?php echo esc_attr( "value={$stored_value}" )?>
-        >
+               value="<?php echo $args['type'] == 'checkbox' ? 'on' : esc_attr($stored_value)?>"
+        />
         <?php
     }
 
