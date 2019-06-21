@@ -311,9 +311,10 @@ class PrintavoAPI {
     }
 
     public static function parse_order_items( $order ) {
-        $items = array();
         $valid_sizes = array( 'yxs', 'ys', 'ym', 'yl', 'yxl', 'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', 'other' );
         $size_key = 'other'; // Default key
+
+        $groups = array();
 
         foreach( $order->get_items() as $item_id => $item ) {
             $quantity = $item->get_quantity();
@@ -332,14 +333,14 @@ class PrintavoAPI {
                 $color = $product->get_attribute( 'color' );
                 $terms = wp_get_post_terms( $item->get_product_id(), 'product_cat', array( 'fields' => 'ids' ) );
                 // This maps sizes
-                // $size = $product->get_attribute( 'size' );
-                // if ( $size && in_array( strtolower( $size ), $valid_sizes ) ) {
-                //     $size_key = strtolower( $size );
-                // }
+                $size = $product->get_attribute( 'size' );
+                if ( $size && in_array( strtolower( $size ), $valid_sizes ) ) {
+                    $size_key = strtolower( $size );
+                }
             }
 
             // Setting a category
-            foreach ($terms as $term_id) {
+            foreach ( $terms as $term_id ) {
                 $cat = get_term_meta( $term_id, 'woo_to_printavo_category', true );
                 if ( $cat ) {
                     $printavo_category = $cat;
@@ -347,15 +348,32 @@ class PrintavoAPI {
                 }
             }
 
-            $items[] = array(
-                'style_number'          => $sku,
-                'style_description'     => $product_name,
-                'category_id'           => $printavo_category,
-                'unit_cost'             => $unit_cost,
-                'color'                 => $color,
-                "size_{$size_key}"      => $quantity, // Quantity
-                'taxable'               => True,
-            );
+            // Extract product name without meta data
+            $name_parts = explode(' - ', $product_name);
+            $clean_name = "{$name_parts[0]}, {$color}";
+            $usize = strtoupper($size_key);
+
+            if ( array_key_exists( $clean_name, $groups ) ) {
+                $groups[$clean_name]["size_{$size_key}"] = $quantity;
+                $groups[$clean_name]['style_description'] .= "{$usize} - ${quantity}" . PHP_EOL;
+            } else {
+                $description = "{$clean_name}" . PHP_EOL .
+                               "{$usize} - ${quantity}" . PHP_EOL;
+                $groups[$clean_name] = array(
+                    'style_number'          => $sku,
+                    'style_description'     => $description,
+                    'category_id'           => $printavo_category,
+                    'unit_cost'             => $unit_cost,
+                    'color'                 => $color,
+                    "size_{$size_key}"      => $quantity, // Quantity
+                    'taxable'               => True,
+                );
+            }
+        }
+
+        $items = array();
+        foreach( $groups as $item ) {
+            $items[] = $item;
         }
         return $items;
     }
